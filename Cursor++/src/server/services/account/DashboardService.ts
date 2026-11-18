@@ -19,17 +19,19 @@
  *     - listBackgroundComposerSecrets, create/revoke → backgroundComposerProxyTransport
  */
 import type { ConnectRouter } from '@connectrpc/connect';
-import { create } from '@bufbuild/protobuf';
+import { create, toJson } from '@bufbuild/protobuf';
 import {
     DashboardService,
     GetPlanInfoResponse_PlanInfoSchema,
     GetCurrentPeriodUsageResponse_PlanUsageSchema,
     GetUsageLimitStatusAndActiveGrantsResponse_UsageLimitPolicyStatusSchema,
+    GetEffectiveUserPluginsRequestSchema,
 } from '../../gen/aiserver_v1_pb';
 // PrivacyMode 同时被 agent_v1 引用, 3.27.22 起由 emitter 拆入 aiserver_v1_shared
 import { PrivacyMode } from '../../gen/aiserver_v1_shared_pb';
 import { exportCanvasHtml, getCanvasesDir, lookupCanvasByKey, storeCanvas } from '../../handlers/canvas/canvasStore';
 import { fetchManagedSkills } from '../../config/managedSkillsStore';
+import { fetchEffectiveUserPlugins } from '../../config/userPluginsStore';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -80,8 +82,17 @@ export default (router: ConnectRouter) => {
             }),
         }),
 
-        getEffectiveUserPlugins: async () => ({}),
-        // 插件市场 — 后续可考虑透传到官方 API 获取真实数据
+        // 透传官方 (与 GetManagedSkills 同模式): BYOK 账号没有插件安装记录,
+        // 返回空会让 Cursor 认为用户没有安装任何插件 (pstack 等 agent-plugins 全部失效)。
+        getEffectiveUserPlugins: async (req, { requestHeader }) => {
+            let body = '{}'
+            try {
+                body = JSON.stringify(toJson(GetEffectiveUserPluginsRequestSchema, req))
+            }
+            catch { /* keep '{}' */ }
+            return await fetchEffectiveUserPlugins(requestHeader ?? new Headers(), body) as any
+        },
+        // 插件市场 — 未列入 routes.json 白名单, 实际直通官方 (此处 stub 仅为路由兜底)
         listMarketplacePlugins: async () => ({ plugins: [] }),
         // hasAutoSpillover: true → Settings 侧边栏显示 "Plan & Usage" (对齐官方)
         isOnNewPricing: async () => ({

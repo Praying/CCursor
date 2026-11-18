@@ -72,7 +72,10 @@ export const BYOK_REDIRECT = [
   'aiserver.v1.DashboardService/GetTeams',
   'aiserver.v1.DashboardService/GetUserPrivacyMode',
   'aiserver.v1.DashboardService/GetUsageLimitStatusAndActiveGrants',
-  'aiserver.v1.DashboardService/GetEffectiveUserPlugins',
+  // GetEffectiveUserPlugins 不拦截 — agent-host 有一条不带 authorization 的调用路径,
+  // 拦截后透传官方必 401 → 空列表覆盖直连官方拿到的真实插件列表, pstack 等
+  // 用户插件全部失效。直连官方即正确行为。(与 Cursor++/src/server/data/defaults.ts 保持一致)
+  // 'aiserver.v1.DashboardService/GetEffectiveUserPlugins',
   'aiserver.v1.DashboardService/IsOnNewPricing',
   'aiserver.v1.DashboardService/GetManagedSkills',
   'aiserver.v1.DashboardService/GetTeamAdminSettingsOrEmptyIfNotInTeam',

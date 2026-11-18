@@ -23,7 +23,8 @@ interface CacheEntry {
 
 let cache: CacheEntry | null = null
 
-function buildForwardHeaders(clientHeaders: Headers): Record<string, string> {
+/** 提取转发官方 API 所需的请求头 (认证 + 客户端标识) — 供 userPluginsStore 等透传 store 复用 */
+export function buildForwardHeaders(clientHeaders: Headers): Record<string, string> {
   const out: Record<string, string> = {
     'content-type': 'application/json',
     'connect-protocol-version': '1',
