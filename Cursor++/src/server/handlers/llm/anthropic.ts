@@ -89,6 +89,13 @@ export class AnthropicProvider implements LLMProvider {
             stream: true,
         };
 
+        // 会话亲和: 透传 conversationId 至 metadata.user_id, 供下游网关做
+        // 会话级粘性路由 (session affinity)。官方客户端 Claude Code 同样在该
+        // 字段中携带 session 维度; 缺省时不注入, 保持请求体不变。
+        if (request.conversationId) {
+            params.metadata = { user_id: request.conversationId };
+        }
+
         if (cached.system) {
             params.system = cached.system;
         }
@@ -200,7 +207,9 @@ export class AnthropicProvider implements LLMProvider {
             type: 'done',
             stopReason: finalMessage.stop_reason ?? 'end_turn',
             usage: {
-                inputTokens: finalMessage.usage.input_tokens,
+                // Anthropic 的 input_tokens 不含缓存读写, 三者互不相交; 加起来才是整个 prompt 的规模,
+                // 与 OpenAI / Gemini 的口径 (prompt 总数, 缓存是其子集) 一致。
+                inputTokens: finalMessage.usage.input_tokens + cacheRead + cacheWrite,
                 outputTokens: finalMessage.usage.output_tokens,
                 cacheReadTokens: cacheRead || undefined,
                 cacheWriteTokens: cacheWrite || undefined,
