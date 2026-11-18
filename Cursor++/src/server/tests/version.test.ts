@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { version as PACKAGE_VERSION } from '../../../package.json'
 import { compareVersions, EXTENSION_VERSION, isNewerVersion } from '../../version'
 
 describe('extension version ownership', () => {
   it('uses the package version for server ownership metadata', () => {
-    expect(EXTENSION_VERSION).toBe('0.0.16')
+    expect(EXTENSION_VERSION).toBe(PACKAGE_VERSION)
   })
 
   it('orders numeric extension versions', () => {
