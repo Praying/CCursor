@@ -303,14 +303,17 @@ export function categorizeCursorRules(params: {
     }
     if (rule.kind === 'manuallyAttached')
       continue
-    if (rule.kind === 'global' && !isAutoAttachedRule(rule, workspacePaths)) {
-      alwaysRules.push(rule)
-      continue
-    }
-    // Content-only legacy rules without a path cannot be fetched, so preserve the old eager fallback.
-    if (rule.kind === 'unknown' && !rule.fullPath) {
+    // Content-only rules without a path cannot be fetched: Cursor Settings 的
+    // User Rules 以 type:global 且无 fullPath 下发 (用户手写规则, 无文件),
+    // 旧版无类型 content-only 同理 — 都渲染为 <user_rules>, 而不是
+    // <always_applied_workspace_rule name="undefined">。
+    if (!rule.fullPath && (rule.kind === 'global' || rule.kind === 'unknown')) {
       if (rule.content)
         userRules.push(rule.content)
+      continue
+    }
+    if (rule.kind === 'global' && !isAutoAttachedRule(rule, workspacePaths)) {
+      alwaysRules.push(rule)
       continue
     }
     requestableRules.push(rule)

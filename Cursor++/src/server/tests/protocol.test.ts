@@ -192,7 +192,14 @@ it('buildMessages produces official-style system and structured user content', (
             readLintsEnabled: true,
             rules: [
               {
+                // Cursor Settings 的 User Rules: type:global 且无 fullPath → <user_rules>
                 content: 'Always reply in Chinese',
+                type: { global: {} },
+              },
+              {
+                // .cursor/rules 顶层的 global 规则 (带 fullPath) → <always_applied_workspace_rules>
+                content: 'Always use TypeScript',
+                fullPath: '/workspace/app/.cursor/rules/always.md',
                 type: { global: {} },
               },
               {
@@ -232,6 +239,7 @@ it('buildMessages produces official-style system and structured user content', (
   expect(preambleUserContent).toMatch(/<user_rules/)
   expect(preambleUserContent).toMatch(/Always reply in Chinese/)
   expect(preambleUserContent).toMatch(/<always_applied_workspace_rules/)
+  expect(preambleUserContent).toMatch(/<always_applied_workspace_rule name="\/workspace\/app\/\.cursor\/rules\/always\.md">Always use TypeScript<\/always_applied_workspace_rule>/)
   // fileGlobbed 正文不预载，读取匹配文件后才通过 related_cursor_rules 注入。
   expect(preambleUserContent).not.toMatch(/Use pnpm/)
   expect(preambleUserContent).toMatch(/<agent_requestable_workspace_rules/)
