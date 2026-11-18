@@ -17,11 +17,24 @@ export default (router: ConnectRouter) => {
     router.service(BidiService, {
         bidiAppend: async (req) => {
             const requestId = req.requestId?.requestId;
-            if (requestId && req.data) {
-                logger.info({ requestId, dataLen: req.data.length, seqno: Number(req.appendSeqno) }, '[SVC] BidiAppend');
-                appendMessage(requestId, req.data);
+            // BidiAppend 消息体有两种互斥编码:
+            //   data (field 1)       — hex string, 旧客户端
+            //   dataBinary (field 4) — 原始 bytes, Cursor "bidi_append_fix" gate
+            //                          (binaryEncoding) 开启时, 3.30 默认灰度。
+            // 只读 data 时 dataBinary 消息被静默丢弃 (仍 ACK 200), RunSSE 等待
+            // 首条消息 30s 超时, 客户端看到 "RunSSE waited for the first
+            // BidiAppend message but none arrived"。两条编码统一转成 hex 交给
+            // appendMessage (其内部 hex → bytes → proto decode)。
+            let data = req.data;
+            const isBinary = (!data || data.length === 0) && req.dataBinary.length > 0;
+            if (isBinary) {
+                data = Buffer.from(req.dataBinary).toString('hex');
+            }
+            if (requestId && data) {
+                logger.info({ requestId, dataLen: data.length, seqno: Number(req.appendSeqno), binary: isBinary }, '[SVC] BidiAppend');
+                appendMessage(requestId, data);
             } else {
-                logger.warn({ hasRequestId: !!requestId, hasData: !!req.data }, '[SVC] BidiAppend missing fields');
+                logger.warn({ hasRequestId: !!requestId, hasData: !!data }, '[SVC] BidiAppend missing fields');
             }
             return {};
         },
